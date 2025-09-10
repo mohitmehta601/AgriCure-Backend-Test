@@ -1,25 +1,33 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import pandas as pd
-import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-import pickle
 import os
+import sys
 from typing import Dict, Any
 import logging
 from datetime import datetime
 from soil_api import soil_data_api
 
-# Base directories for models, data, templates, and static files
+# Add the new ML model directory to Python path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_DIR = os.path.join(BASE_DIR, "models")
-ML_DIR = os.path.join(BASE_DIR, "ml")
-TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
-STATIC_DIR = os.path.join(BASE_DIR, "static")
+NEW_ML_MODEL_DIR = os.path.join(BASE_DIR, "My new ml model")
+sys.path.insert(0, NEW_ML_MODEL_DIR)
+
+# Import the new ML model predictor and LLM
+try:
+    from predictor import load_default, FertilizerRecommender
+    ML_MODEL_AVAILABLE = True
+except ImportError as e:
+    ML_MODEL_AVAILABLE = False
+    ML_MODEL_ERROR = str(e)
+
+# Import LLM for enhanced recommendations
+try:
+    from llm import generate_recommendation_report
+    LLM_AVAILABLE = True
+except ImportError as e:
+    LLM_AVAILABLE = False
+    LLM_ERROR = str(e)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,7 +35,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Fertilizer Recommendation API",
     description="ML API for predicting fertilizer recommendations based on soil and crop conditions",
-    version="1.0.0"
+    version="2.0.0"  # Updated version for new ML model
 )
 
 app.add_middleware(
@@ -43,10 +51,28 @@ class FertilizerInput(BaseModel):
     Humidity: float
     Moisture: float
     Soil_Type: str
+    Crop_Type: str  # Keep original field name for API compatibility
+    Nitrogen: float
+    Potassium: float
+    Phosphorous: float  # Keep original field name for API compatibility
+    pH: float = 6.5  # Add pH field with default value
+
+class EnhancedFertilizerInput(BaseModel):
+    Temperature: float
+    Humidity: float
+    Moisture: float
+    Soil_Type: str
     Crop_Type: str
     Nitrogen: float
     Potassium: float
     Phosphorous: float
+    pH: float = 6.5
+    # Additional fields for LLM
+    Sowing_Date: str = None  # ISO date format (YYYY-MM-DD)
+    Field_Size: float = 1.0  # Default 1 hectare
+    Field_Unit: str = "hectares"
+    Bulk_Density_g_cm3: float = 1.3  # Default bulk density
+    Sampling_Depth_cm: float = 15.0  # Default sampling depth
 
 class LocationInput(BaseModel):
     latitude: float
@@ -65,116 +91,63 @@ class FertilizerResponse(BaseModel):
     fertilizer: str
     confidence: float
     prediction_info: Dict[str, Any]
-
-model = None
-soil_encoder = None
-crop_encoder = None
-fertilizer_encoder = None
-model_accuracy = None
-
-def load_and_train_model():
-    global model, soil_encoder, crop_encoder, fertilizer_encoder, model_accuracy
     
-    try:
-        dataset_path = os.path.join(ML_DIR, "f2.csv")
-        logger.info(f"Loading dataset from: {dataset_path}")
-        
-        # Check if file exists
-        if not os.path.exists(dataset_path):
-            logger.error(f"Dataset file not found: {dataset_path}")
-            return False
-        
-        data = pd.read_csv(dataset_path)
-        logger.info(f"Dataset loaded successfully. Shape: {data.shape}")
-        
-        required_columns = ['Temparature', 'Humidity', 'Moisture', 'Soil_Type', 'Crop_Type', 
-                           'Nitrogen', 'Potassium', 'Phosphorous', 'Fertilizer']
-        
-        missing_columns = [col for col in required_columns if col not in data.columns]
-        if missing_columns:
-            logger.error(f"Missing columns in dataset: {missing_columns}")
-            return False
-        
-        data = data.rename(columns={'Temparature': 'Temperature'})
-        
-        # Initialize encoders
-        soil_encoder = LabelEncoder()
-        crop_encoder = LabelEncoder()
-        fertilizer_encoder = LabelEncoder()
-        
-        # Check for empty data
-        if len(data) == 0:
-            logger.error("Dataset is empty")
-            return False
-        
-        data['Soil_Type_Encoded'] = soil_encoder.fit_transform(data['Soil_Type'])
-        data['Crop_Type_Encoded'] = crop_encoder.fit_transform(data['Crop_Type'])
-        data['Fertilizer_Encoded'] = fertilizer_encoder.fit_transform(data['Fertilizer'])
-        
-        feature_columns = ['Temperature', 'Humidity', 'Moisture', 'Soil_Type_Encoded', 
-                          'Crop_Type_Encoded', 'Nitrogen', 'Potassium', 'Phosphorous']
-        
-        X = data[feature_columns]
-        y = data['Fertilizer_Encoded']
-        
-        # Validate data
-        if X.isnull().any().any() or y.isnull().any():
-            logger.error("Dataset contains null values")
-            return False
-        
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42, stratify=y
-        )
-        
-        model = RandomForestClassifier(
-            n_estimators=100,
-            random_state=42,
-            max_depth=10,
-            min_samples_split=5,
-            min_samples_leaf=2
-        )
-        
-        model.fit(X_train, y_train)
-        
-        y_pred = model.predict(X_test)
-        model_accuracy = accuracy_score(y_test, y_pred)
-        
-        logger.info(f"Model trained successfully. Accuracy: {model_accuracy:.4f}")
-        logger.info(f"Unique fertilizers: {fertilizer_encoder.classes_.tolist()}")
-        logger.info(f"Unique soil types: {soil_encoder.classes_.tolist()}")
-        logger.info(f"Unique crop types: {crop_encoder.classes_.tolist()}")
-        
-        return True
-        
-    except Exception as e:
-        logger.error(f"Error training model: {str(e)}")
-        import traceback
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        return False
+class EnhancedFertilizerResponse(BaseModel):
+    predictions: Dict[str, str]
+    confidences: Dict[str, float]
+    prediction_info: Dict[str, Any]
+
+class LLMEnhancedResponse(BaseModel):
+    ml_model_prediction: Dict[str, Any]
+    soil_condition: Dict[str, Any]
+    primary_fertilizer: Dict[str, Any]
+    secondary_fertilizer: Dict[str, Any]
+    organic_alternatives: list
+    application_timing: Dict[str, str]
+    cost_estimate: Dict[str, Any]
+    meta_info: Dict[str, Any] = None
+
+# Global model instance
+_recommender: FertilizerRecommender = None
+
+def get_recommender() -> FertilizerRecommender:
+    global _recommender
+    if _recommender is None:
+        if not ML_MODEL_AVAILABLE:
+            raise Exception(f"ML model not available: {ML_MODEL_ERROR}")
+        _recommender = load_default()
+    return _recommender
 
 @app.on_event("startup")
 async def startup_event():
     logger.info("Starting up Fertilizer Recommendation API...")
     try:
-        success = load_and_train_model()
-        if not success:
-            logger.error("Failed to load and train model. API may not function properly.")
-            # Don't fail completely, just log the error
+        if ML_MODEL_AVAILABLE:
+            recommender = get_recommender()
+            logger.info("New ML model loaded successfully!")
+            logger.info(f"Model features: {recommender.features}")
+            logger.info(f"Model targets: {recommender.targets}")
         else:
-            logger.info("Model loaded successfully!")
+            logger.error(f"Failed to load new ML model: {ML_MODEL_ERROR}")
+            
+        if LLM_AVAILABLE:
+            logger.info("LLM module loaded successfully!")
+        else:
+            logger.warning(f"LLM module not available: {LLM_ERROR}")
     except Exception as e:
         logger.error(f"Error during startup: {str(e)}")
-        # Don't fail completely, just log the error
 
 @app.get("/")
 async def root():
     try:
         return {
             "message": "Fertilizer Recommendation API",
-            "version": "1.0.0",
+            "version": "2.0.0",
             "status": "running",
-            "model_loaded": model is not None,
-            "model_accuracy": model_accuracy,
+            "model_loaded": ML_MODEL_AVAILABLE and _recommender is not None,
+            "model_type": "Enhanced Ensemble Model" if ML_MODEL_AVAILABLE else "Not Available",
+            "llm_available": LLM_AVAILABLE,
+            "features": ["ML Predictions", "LLM Enhanced Reports", "Cost Estimation", "Organic Alternatives"],
             "timestamp": datetime.now().isoformat(),
             "service": "fertilizer-recommendation-api"
         }
@@ -182,7 +155,7 @@ async def root():
         logger.error(f"Root endpoint error: {str(e)}")
         return {
             "message": "Fertilizer Recommendation API",
-            "version": "1.0.0",
+            "version": "2.0.0",
             "status": "running",
             "service": "fertilizer-recommendation-api"
         }
@@ -199,17 +172,18 @@ async def status_check():
         return {
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
-            "model_loaded": model is not None,
-            "model_accuracy": model_accuracy,
+            "model_loaded": ML_MODEL_AVAILABLE and _recommender is not None,
+            "model_available": ML_MODEL_AVAILABLE,
+            "model_type": "Enhanced Ensemble Model" if ML_MODEL_AVAILABLE else "Not Available",
             "service": "fertilizer-recommendation-api",
-            "version": "1.0.0"
+            "version": "2.0.0"
         }
     except Exception as e:
         logger.error(f"Status check error: {str(e)}")
         return {
             "status": "healthy",
             "service": "fertilizer-recommendation-api",
-            "version": "1.0.0"
+            "version": "2.0.0"
         }
 
 @app.get("/readiness")
@@ -217,9 +191,8 @@ async def readiness_check():
     """Readiness probe - indicates if the service is ready to serve requests"""
     try:
         return {
-            "status": "ready" if model is not None else "not_ready",
-            "model_loaded": model is not None,
-            "model_accuracy": model_accuracy,
+            "status": "ready" if (ML_MODEL_AVAILABLE and _recommender is not None) else "not_ready",
+            "model_loaded": ML_MODEL_AVAILABLE and _recommender is not None,
             "timestamp": datetime.now().isoformat()
         }
     except Exception:
@@ -227,12 +200,11 @@ async def readiness_check():
 
 @app.post("/predict", response_model=FertilizerResponse)
 async def predict_fertilizer(input_data: FertilizerInput):
-    global model, soil_encoder, crop_encoder, fertilizer_encoder
-    
-    if model is None:
-        raise HTTPException(status_code=500, detail="Model not loaded. Please try again later.")
+    if not ML_MODEL_AVAILABLE:
+        raise HTTPException(status_code=500, detail=f"ML model not available: {ML_MODEL_ERROR}")
     
     try:
+        # Input validation
         if not (0 <= input_data.Temperature <= 50):
             raise HTTPException(status_code=400, detail="Temperature must be between 0 and 50°C")
         if not (0 <= input_data.Humidity <= 100):
@@ -245,53 +217,42 @@ async def predict_fertilizer(input_data: FertilizerInput):
             raise HTTPException(status_code=400, detail="Potassium must be between 0 and 100")
         if not (0 <= input_data.Phosphorous <= 100):
             raise HTTPException(status_code=400, detail="Phosphorous must be between 0 and 100")
+        if not (4.0 <= input_data.pH <= 9.0):
+            raise HTTPException(status_code=400, detail="pH must be between 4.0 and 9.0")
         
-        try:
-            soil_encoded = soil_encoder.transform([input_data.Soil_Type])[0]
-            crop_encoded = crop_encoder.transform([input_data.Crop_Type])[0]
-        except ValueError as e:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid categorical value. {str(e)}"
-            )
-        
-        features = np.array([
-            input_data.Temperature,
-            input_data.Humidity,
-            input_data.Moisture,
-            soil_encoded,
-            crop_encoded,
-            input_data.Nitrogen,
-            input_data.Potassium,
-            input_data.Phosphorous
-        ]).reshape(1, -1)
-        
-        prediction = model.predict(features)[0]
-        prediction_proba = model.predict_proba(features)[0]
-        
-        fertilizer_name = fertilizer_encoder.inverse_transform([prediction])[0]
-        confidence = float(prediction_proba[prediction])
-        
-        model_info = {
-            "accuracy": model_accuracy,
-            "n_estimators": model.n_estimators,
-            "feature_importance": {
-                "Temperature": float(model.feature_importances_[0]),
-                "Humidity": float(model.feature_importances_[1]),
-                "Moisture": float(model.feature_importances_[2]),
-                "Soil_Type": float(model.feature_importances_[3]),
-                "Crop_Type": float(model.feature_importances_[4]),
-                "Nitrogen": float(model.feature_importances_[5]),
-                "Potassium": float(model.feature_importances_[6]),
-                "Phosphorous": float(model.feature_importances_[7])
-            }
+        # Prepare features for the new model (map field names)
+        features = {
+            "Temperature": input_data.Temperature,
+            "Humidity": input_data.Humidity,
+            "Moisture": input_data.Moisture,
+            "Soil_Type": input_data.Soil_Type,
+            "Crop": input_data.Crop_Type,  # Map Crop_Type to Crop
+            "Nitrogen": input_data.Nitrogen,
+            "Phosphorus": input_data.Phosphorous,  # Map Phosphorous to Phosphorus
+            "Potassium": input_data.Potassium,
+            "pH": input_data.pH
         }
         
-        logger.info(f"Prediction made: {fertilizer_name} with confidence {confidence:.4f}")
+        recommender = get_recommender()
+        predictions, confidences = recommender.predict(features)
+        
+        # For backward compatibility, return the primary fertilizer recommendation
+        primary_fertilizer = predictions.get("Primary_Fertilizer", "Unknown")
+        primary_confidence = confidences.get("Primary_Fertilizer", 0.0)
+        
+        model_info = {
+            "model_type": "Enhanced Ensemble Model",
+            "all_predictions": predictions,
+            "all_confidences": confidences,
+            "features_used": list(features.keys()),
+            "targets": recommender.targets
+        }
+        
+        logger.info(f"Prediction made: {primary_fertilizer} with confidence {primary_confidence:.4f}")
         
         return FertilizerResponse(
-            fertilizer=fertilizer_name,
-            confidence=confidence,
+            fertilizer=primary_fertilizer,
+            confidence=primary_confidence,
             prediction_info=model_info
         )
         
@@ -301,40 +262,182 @@ async def predict_fertilizer(input_data: FertilizerInput):
         logger.error(f"Error during prediction: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
+@app.post("/predict-enhanced", response_model=EnhancedFertilizerResponse)
+async def predict_fertilizer_enhanced(input_data: FertilizerInput):
+    """Enhanced prediction endpoint that returns all predictions from the new model"""
+    if not ML_MODEL_AVAILABLE:
+        raise HTTPException(status_code=500, detail=f"ML model not available: {ML_MODEL_ERROR}")
+    
+    try:
+        # Input validation (same as above)
+        if not (0 <= input_data.Temperature <= 50):
+            raise HTTPException(status_code=400, detail="Temperature must be between 0 and 50°C")
+        if not (0 <= input_data.Humidity <= 100):
+            raise HTTPException(status_code=400, detail="Humidity must be between 0 and 100%")
+        if not (0 <= input_data.Moisture <= 100):
+            raise HTTPException(status_code=400, detail="Moisture must be between 0 and 100%")
+        if not (0 <= input_data.Nitrogen <= 150):
+            raise HTTPException(status_code=400, detail="Nitrogen must be between 0 and 150")
+        if not (0 <= input_data.Potassium <= 100):
+            raise HTTPException(status_code=400, detail="Potassium must be between 0 and 100")
+        if not (0 <= input_data.Phosphorous <= 100):
+            raise HTTPException(status_code=400, detail="Phosphorous must be between 0 and 100")
+        if not (4.0 <= input_data.pH <= 9.0):
+            raise HTTPException(status_code=400, detail="pH must be between 4.0 and 9.0")
+        
+        # Prepare features for the new model
+        features = {
+            "Temperature": input_data.Temperature,
+            "Humidity": input_data.Humidity,
+            "Moisture": input_data.Moisture,
+            "Soil_Type": input_data.Soil_Type,
+            "Crop": input_data.Crop_Type,
+            "Nitrogen": input_data.Nitrogen,
+            "Phosphorus": input_data.Phosphorous,
+            "Potassium": input_data.Potassium,
+            "pH": input_data.pH
+        }
+        
+        recommender = get_recommender()
+        predictions, confidences = recommender.predict(features)
+        
+        model_info = {
+            "model_type": "Enhanced Ensemble Model",
+            "features_used": list(features.keys()),
+            "targets": recommender.targets,
+            "cv_scores": recommender.cv_scores
+        }
+        
+        logger.info(f"Enhanced prediction made for all targets: {list(predictions.keys())}")
+        
+        return EnhancedFertilizerResponse(
+            predictions=predictions,
+            confidences=confidences,
+            prediction_info=model_info
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error during enhanced prediction: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Enhanced prediction error: {str(e)}")
+
+@app.post("/predict-llm-enhanced", response_model=LLMEnhancedResponse)
+async def predict_fertilizer_llm_enhanced(input_data: EnhancedFertilizerInput):
+    """LLM-enhanced prediction endpoint with comprehensive fertilizer recommendations, cost analysis, and organic alternatives"""
+    if not ML_MODEL_AVAILABLE:
+        raise HTTPException(status_code=500, detail=f"ML model not available: {ML_MODEL_ERROR}")
+    
+    if not LLM_AVAILABLE:
+        raise HTTPException(status_code=500, detail=f"LLM module not available: {LLM_ERROR}")
+    
+    try:
+        # Input validation
+        if not (0 <= input_data.Temperature <= 50):
+            raise HTTPException(status_code=400, detail="Temperature must be between 0 and 50°C")
+        if not (0 <= input_data.Humidity <= 100):
+            raise HTTPException(status_code=400, detail="Humidity must be between 0 and 100%")
+        if not (0 <= input_data.Moisture <= 100):
+            raise HTTPException(status_code=400, detail="Moisture must be between 0 and 100%")
+        if not (0 <= input_data.Nitrogen <= 150):
+            raise HTTPException(status_code=400, detail="Nitrogen must be between 0 and 150")
+        if not (0 <= input_data.Potassium <= 100):
+            raise HTTPException(status_code=400, detail="Potassium must be between 0 and 100")
+        if not (0 <= input_data.Phosphorous <= 100):
+            raise HTTPException(status_code=400, detail="Phosphorous must be between 0 and 100")
+        if not (4.0 <= input_data.pH <= 9.0):
+            raise HTTPException(status_code=400, detail="pH must be between 4.0 and 9.0")
+        if not (0.1 <= input_data.Field_Size <= 1000):
+            raise HTTPException(status_code=400, detail="Field size must be between 0.1 and 1000")
+        
+        # Prepare features for the ML model
+        features = {
+            "Temperature": input_data.Temperature,
+            "Humidity": input_data.Humidity,
+            "Moisture": input_data.Moisture,
+            "Soil_Type": input_data.Soil_Type,
+            "Crop": input_data.Crop_Type,  # Map Crop_Type to Crop
+            "Nitrogen": input_data.Nitrogen,
+            "Phosphorus": input_data.Phosphorous,  # Map Phosphorous to Phosphorus
+            "Potassium": input_data.Potassium,
+            "pH": input_data.pH
+        }
+        
+        # Get ML predictions first
+        recommender = get_recommender()
+        predictions, confidences = recommender.predict(features)
+        
+        # Prepare inputs for LLM
+        base_inputs = {
+            "Temperature": input_data.Temperature,
+            "Humidity": input_data.Humidity,
+            "Moisture": input_data.Moisture,
+            "Soil_Type": input_data.Soil_Type,
+            "Crop": input_data.Crop_Type,
+            "Nitrogen": input_data.Nitrogen,
+            "Phosphorus": input_data.Phosphorous,
+            "Potassium": input_data.Potassium,
+            "pH": input_data.pH,
+            "Sowing_Date": input_data.Sowing_Date or "2024-01-01",
+            "Field_Size": input_data.Field_Size,
+            "Field_Unit": input_data.Field_Unit,
+            "Bulk_Density_g_cm3": input_data.Bulk_Density_g_cm3,
+            "Sampling_Depth_cm": input_data.Sampling_Depth_cm
+        }
+        
+        # Generate LLM-enhanced report
+        llm_report = generate_recommendation_report(
+            base_inputs=base_inputs,
+            predictions=predictions,
+            confidences=confidences,
+            use_gemini_for_text=False  # Start with local generation, can be made configurable
+        )
+        
+        logger.info(f"LLM-enhanced prediction generated successfully")
+        logger.info(f"Primary fertilizer: {llm_report['primary_fertilizer']['name']}")
+        logger.info(f"Total cost estimate: {llm_report['cost_estimate']['total']}")
+        
+        return LLMEnhancedResponse(
+            ml_model_prediction=llm_report["ml_model_prediction"],
+            soil_condition=llm_report["soil_condition"],
+            primary_fertilizer=llm_report["primary_fertilizer"],
+            secondary_fertilizer=llm_report["secondary_fertilizer"],
+            organic_alternatives=llm_report["organic_alternatives"],
+            application_timing=llm_report["application_timing"],
+            cost_estimate=llm_report["cost_estimate"],
+            meta_info=llm_report.get("_meta")
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error during LLM-enhanced prediction: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"LLM prediction error: {str(e)}")
+
 @app.get("/model-info")
 async def get_model_info():
-    if model is None:
-        raise HTTPException(status_code=500, detail="Model not loaded")
+    if not ML_MODEL_AVAILABLE:
+        raise HTTPException(status_code=500, detail=f"ML model not available: {ML_MODEL_ERROR}")
     
-    return {
-        "model_type": "RandomForestClassifier",
-        "accuracy": model_accuracy,
-        "n_estimators": model.n_estimators,
-        "feature_importance": {
-            "Temperature": float(model.feature_importances_[0]),
-            "Humidity": float(model.feature_importances_[1]),
-            "Moisture": float(model.feature_importances_[2]),
-            "Soil_Type": float(model.feature_importances_[3]),
-            "Crop_Type": float(model.feature_importances_[4]),
-            "Nitrogen": float(model.feature_importances_[5]),
-            "Potassium": float(model.feature_importances_[6]),
-            "Phosphorous": float(model.feature_importances_[7])
-        },
-        "available_fertilizers": fertilizer_encoder.classes_.tolist() if fertilizer_encoder else [],
-        "available_soil_types": soil_encoder.classes_.tolist() if soil_encoder else [],
-        "available_crop_types": crop_encoder.classes_.tolist() if crop_encoder else []
-    }
-
-@app.post("/retrain")
-async def retrain_model():
     try:
-        success = load_and_train_model()
-        if success:
-            return {"message": "Model retrained successfully", "accuracy": model_accuracy}
-        else:
-            raise HTTPException(status_code=500, detail="Failed to retrain model")
+        recommender = get_recommender()
+        return {
+            "model_type": "Enhanced Ensemble Model",
+            "features": recommender.features,
+            "targets": recommender.targets,
+            "cv_scores": recommender.cv_scores,
+            "available_models": {
+                target: list(models.keys()) 
+                for target, models in recommender.models.items()
+            },
+            "label_encoders": {
+                target: encoder.classes_.tolist() 
+                for target, encoder in recommender.label_encoders.items()
+            }
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Retraining error: {str(e)}")
+        logger.error(f"Error getting model info: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Model info error: {str(e)}")
 
 @app.post("/soil-data")
 async def get_soil_data(location: LocationInput):
@@ -378,13 +481,14 @@ async def predict_fertilizer_with_location(request_data: dict):
             Humidity=request_data.get('Humidity', 80.0),
             Moisture=request_data.get('Moisture', 30.0),
             Soil_Type=soil_data['soil_type'],
-            Crop_Type=request_data.get('Crop_Type', 'rice'),
+            Crop_Type=request_data.get('Crop_Type', 'Rice'),  # Updated default
             Nitrogen=request_data.get('Nitrogen', 85.0),
             Potassium=request_data.get('Potassium', 45.0),
-            Phosphorous=request_data.get('Phosphorous', 35.0)
+            Phosphorous=request_data.get('Phosphorous', 35.0),
+            pH=request_data.get('pH', 6.5)
         )
         
-        prediction_result = await predict_fertilizer(fertilizer_input)
+        prediction_result = await predict_fertilizer_enhanced(fertilizer_input)
         
         response = {
             **prediction_result.dict(),
