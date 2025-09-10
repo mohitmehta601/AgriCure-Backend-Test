@@ -17,17 +17,21 @@ sys.path.insert(0, NEW_ML_MODEL_DIR)
 try:
     from predictor import load_default, FertilizerRecommender
     ML_MODEL_AVAILABLE = True
+    print("✅ New ML model loaded successfully")
 except ImportError as e:
     ML_MODEL_AVAILABLE = False
     ML_MODEL_ERROR = str(e)
+    print(f"❌ Failed to load new ML model: {e}")
 
 # Import LLM for enhanced recommendations
 try:
     from llm import generate_recommendation_report
     LLM_AVAILABLE = True
+    print("✅ LLM module loaded successfully")
 except ImportError as e:
     LLM_AVAILABLE = False
     LLM_ERROR = str(e)
+    print(f"⚠️ LLM module not available: {e}")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
