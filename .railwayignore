@@ -1,0 +1,10 @@
+# Ignore large model files during upload
+
+_.pkl
+models/
+My new ml model/_.pkl
+**pycache**/
+.git/
+.env
+\*.log
+node_modules/
