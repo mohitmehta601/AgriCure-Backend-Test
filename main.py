@@ -240,6 +240,15 @@ async def predict_fertilizer(input_data: FertilizerInput):
         recommender = get_recommender()
         predictions, confidences = recommender.predict(features)
         
+        # Apply special quantity rules for specific fertilizer predictions
+        # Handle "Balanced NPK (maintenance)" - always 0 quantity
+        if predictions.get("Primary_Fertilizer") == "Balanced NPK (maintenance)":
+            predictions["Primary_Fertilizer_Quantity"] = 0
+        
+        # Handle "—" for secondary fertilizer - always 0 quantity  
+        if predictions.get("Secondary_Fertilizer") == "—":
+            predictions["Secondary_Fertilizer_Quantity"] = 0
+        
         # For backward compatibility, return the primary fertilizer recommendation
         primary_fertilizer = predictions.get("Primary_Fertilizer", "Unknown")
         primary_confidence = confidences.get("Primary_Fertilizer", 0.0)
@@ -304,6 +313,15 @@ async def predict_fertilizer_enhanced(input_data: FertilizerInput):
         
         recommender = get_recommender()
         predictions, confidences = recommender.predict(features)
+        
+        # Apply special quantity rules for specific fertilizer predictions
+        # Handle "Balanced NPK (maintenance)" - always 0 quantity
+        if predictions.get("Primary_Fertilizer") == "Balanced NPK (maintenance)":
+            predictions["Primary_Fertilizer_Quantity"] = 0
+        
+        # Handle "—" for secondary fertilizer - always 0 quantity  
+        if predictions.get("Secondary_Fertilizer") == "—":
+            predictions["Secondary_Fertilizer_Quantity"] = 0
         
         model_info = {
             "model_type": "Enhanced Ensemble Model",

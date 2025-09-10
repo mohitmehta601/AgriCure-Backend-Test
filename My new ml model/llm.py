@@ -60,7 +60,7 @@ FERTILIZER_NPK: Dict[str, str] = {
 }
 
 # If rate_table.json not present, use these ₹/kg example prices as a fallback.
-# Replace with your region’s baseline; live prices override these.
+# Replace with your region's baseline; live prices override these.
 from typing import Dict
 
 RATE_TABLE_DEFAULT: Dict[str, float] = {
@@ -344,26 +344,37 @@ def generate_recommendation_report(
     effective_region = region or local_table.get("region")
 
     # ---------- Amounts ----------
-    # Primary is tied most to N_status if it’s an N source; otherwise use matching status
+    # Primary fertilizer amount calculation
     if primary_name:
-        if primary_name.lower() in {"urea", "calcium ammonium nitrate", "ammonium sulphate", "dap"}:
-            primary_delta = _dose_factor_from_status(n_status)
-        elif primary_name.lower() in {"mop", "sop", "potassium sulfate"}:
-            primary_delta = _dose_factor_from_status(k_status)
+        # Special case: "Balanced NPK (maintenance)" always gets 0 quantity
+        if primary_name == "Balanced NPK (maintenance)":
+            primary_amount = 0
         else:
-            primary_delta = 0.0
-        primary_amount = _scaled_amount_kg(primary_name, field_size, primary_delta)
+            # Normal calculation for other fertilizers
+            if primary_name.lower() in {"urea", "calcium ammonium nitrate", "ammonium sulphate", "dap"}:
+                primary_delta = _dose_factor_from_status(n_status)
+            elif primary_name.lower() in {"mop", "sop", "potassium sulfate"}:
+                primary_delta = _dose_factor_from_status(k_status)
+            else:
+                primary_delta = 0.0
+            primary_amount = _scaled_amount_kg(primary_name, field_size, primary_delta)
     else:
         primary_amount = 0
 
+    # Secondary fertilizer amount calculation
     if secondary_name:
-        if secondary_name.lower() in {"mop", "sop", "potassium sulfate"}:
-            secondary_delta = _dose_factor_from_status(k_status)
-        elif secondary_name.lower() in {"dap"}:
-            secondary_delta = _dose_factor_from_status(p_status)
+        # Special case: "—" always gets 0 quantity
+        if secondary_name == "—":
+            secondary_amount = 0
         else:
-            secondary_delta = 0.0
-        secondary_amount = _scaled_amount_kg(secondary_name, field_size, secondary_delta)
+            # Normal calculation for other fertilizers
+            if secondary_name.lower() in {"mop", "sop", "potassium sulfate"}:
+                secondary_delta = _dose_factor_from_status(k_status)
+            elif secondary_name.lower() in {"dap"}:
+                secondary_delta = _dose_factor_from_status(p_status)
+            else:
+                secondary_delta = 0.0
+            secondary_amount = _scaled_amount_kg(secondary_name, field_size, secondary_delta)
     else:
         secondary_amount = 0
 
@@ -394,8 +405,16 @@ def generate_recommendation_report(
             organics_all_priced = False
 
     # Ensure all three categories always have cost values (never None)
-    primary_cost = (primary_amount * primary_price) if (primary_price is not None and primary_amount > 0) else 0.0
-    secondary_cost = (secondary_amount * secondary_price) if (secondary_price is not None and secondary_amount > 0) else 0.0
+    # Special handling for "Balanced NPK (maintenance)" and "—"
+    if primary_name == "Balanced NPK (maintenance)":
+        primary_cost = 0.0  # Always 0 cost for maintenance recommendations
+    else:
+        primary_cost = (primary_amount * primary_price) if (primary_price is not None and primary_amount > 0) else 0.0
+    
+    if secondary_name == "—":
+        secondary_cost = 0.0  # Always 0 cost for "—" recommendations
+    else:
+        secondary_cost = (secondary_amount * secondary_price) if (secondary_price is not None and secondary_amount > 0) else 0.0
     
     # For organics, if no organics are recommended, set cost to 0.0
     if not organics_blocks:

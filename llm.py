@@ -344,28 +344,33 @@ def generate_recommendation_report(
     effective_region = region or local_table.get("region")
 
     # ---------- Amounts ----------
-    # Primary is tied most to N_status if it's an N source; otherwise use matching status
-    if primary_name:
-        if primary_name.lower() in {"urea", "calcium ammonium nitrate", "ammonium sulphate", "dap"}:
-            primary_delta = _dose_factor_from_status(n_status)
-        elif primary_name.lower() in {"mop", "sop", "potassium sulfate"}:
-            primary_delta = _dose_factor_from_status(k_status)
-        else:
-            primary_delta = 0.0
-        primary_amount = _scaled_amount_kg(primary_name, field_size, primary_delta)
-    else:
+    # Special case: When ML model shows "Balanced NPK (maintenance)" and "—", set both quantities to 0
+    if (primary_name == "Balanced NPK (maintenance)" and secondary_name == "—"):
         primary_amount = 0
-
-    if secondary_name:
-        if secondary_name.lower() in {"mop", "sop", "potassium sulfate"}:
-            secondary_delta = _dose_factor_from_status(k_status)
-        elif secondary_name.lower() in {"dap"}:
-            secondary_delta = _dose_factor_from_status(p_status)
-        else:
-            secondary_delta = 0.0
-        secondary_amount = _scaled_amount_kg(secondary_name, field_size, secondary_delta)
-    else:
         secondary_amount = 0
+    else:
+        # Primary is tied most to N_status if it's an N source; otherwise use matching status
+        if primary_name:
+            if primary_name.lower() in {"urea", "calcium ammonium nitrate", "ammonium sulphate", "dap"}:
+                primary_delta = _dose_factor_from_status(n_status)
+            elif primary_name.lower() in {"mop", "sop", "potassium sulfate"}:
+                primary_delta = _dose_factor_from_status(k_status)
+            else:
+                primary_delta = 0.0
+            primary_amount = _scaled_amount_kg(primary_name, field_size, primary_delta)
+        else:
+            primary_amount = 0
+
+        if secondary_name:
+            if secondary_name.lower() in {"mop", "sop", "potassium sulfate"}:
+                secondary_delta = _dose_factor_from_status(k_status)
+            elif secondary_name.lower() in {"dap"}:
+                secondary_delta = _dose_factor_from_status(p_status)
+            else:
+                secondary_delta = 0.0
+            secondary_amount = _scaled_amount_kg(secondary_name, field_size, secondary_delta)
+        else:
+            secondary_amount = 0
 
     organics_blocks = []
     for o in organics:

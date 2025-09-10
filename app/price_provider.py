@@ -8,11 +8,25 @@ FERT_ALIAS = {
     "urea": "Urea", "dap": "DAP", "diammonium phosphate": "DAP",
     "can": "Calcium Ammonium Nitrate", "calcium ammonium nitrate": "Calcium Ammonium Nitrate",
     "ammonium sulphate": "Ammonium Sulphate", "ammonium sulfate": "Ammonium Sulphate",
-    "vermicompost": "Vermicompost", "neem cake": "Neem Cake", "bone meal": "Bone Meal",
+    "ammonium nitrate": "Ammonium Nitrate", "ammonium chloride": "Ammonium Chloride",
+    "ssp": "SSP", "single super phosphate": "SSP",
+    "tsp": "TSP", "triple super phosphate": "TSP",
+    "rock phosphate": "Rock Phosphate",
+    "vermicompost": "Vermicompost", "neem cake": "Neem cake", "bone meal": "Bone meal",
     "compost": "Compost", "poultry manure": "Poultry manure", "wood ash": "Wood Ash",
+    "fym": "FYM", "farmyard manure": "FYM",
+    "green manure": "Green manure", "mustard cake": "Mustard cake",
+    "banana wastes": "Banana wastes", "banana peel compost": "Banana peel compost",
+    "mulch": "Mulch", "azolla": "Azolla",
     # Secondary/Biofertilizers
     "psb": "PSB", "phosphate solubilizing bacteria": "PSB",
     "rhizobium": "Rhizobium", "azospirillum": "Azospirillum", "azotobacter": "Azotobacter",
+    # Advisory terms
+    "balanced npk (maintenance)": "Balanced NPK (maintenance)",
+    "split n doses": "Split N doses", "stop p": "Stop P", "stop k": "Stop K",
+    "reduce n": "Reduce N", "avoid n": "Avoid N", "avoid potash": "Avoid Potash",
+    "avoid phosphate application": "Avoid Phosphate application",
+    "none": "None", "—": "—"
 }
 
 def normalize_name(name: Optional[str]) -> Optional[str]:
