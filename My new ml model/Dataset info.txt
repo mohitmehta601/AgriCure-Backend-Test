@@ -1,0 +1,113 @@
+📑 Dataset Documentation – Edited Verified & Enriched Agricultural Dataset
+1. Overview
+
+This dataset contains 5110 rows and 21 columns, covering environmental, soil, crop, and fertilizer recommendation parameters for precision agriculture in India.
+It was verified and enriched using trusted agricultural sources, with corrections for missing values, fertilizer recommendations, and soil–nutrient linkages.
+
+2. Structure
+Columns
+
+Temperature (°C) – Air temperature at field
+
+Humidity (%) – Relative humidity
+
+Moisture (%) – Soil moisture
+
+Soil_Type – Soil classification (Sandy, Silty, Clay, Laterite, Alkaline, etc.)
+
+Crop – Crop type (Tea, Cotton, Maize, Groundnut, etc.)
+
+Nitrogen (N) – Soil nitrogen level (mg/kg)
+
+Phosphorus (P) – Soil phosphorus level (mg/kg)
+
+Potassium (K) – Soil potassium level (mg/kg)
+
+pH – Soil pH value
+
+N_Status – Nitrogen sufficiency (Low, Optimal, High)
+
+P_Status – Phosphorus sufficiency (Low, Optimal, High)
+
+K_Status – Potassium sufficiency (Low, Optimal, High)
+
+Primary_Fertilizer – Recommended main inorganic fertilizer
+
+Secondary_Fertilizer – Supplementary inorganic fertilizer (different from primary)
+
+Organic_1 / Organic_2 / Organic_3 – Recommended organic amendments
+
+pH_Amendment – Suggested soil amendment for pH correction (e.g., Lime, Sulphur, Gypsum, None)
+
+_N_calc / _P_calc / _K_calc – Backend-calculated nutrient sufficiency labels (for validation)
+
+Size
+
+Rows: 5110
+
+Columns: 21
+
+Sample Row
+Temperature: 25.2  
+Humidity: 35  
+Moisture: 70  
+Soil_Type: Alkaline  
+Crop: Groundnut  
+Nitrogen: 78  
+Phosphorus: 20  
+Potassium: 58  
+pH: 8.09  
+N_Status: Low  
+P_Status: Optimal  
+K_Status: Low  
+Primary_Fertilizer: Urea  
+Secondary_Fertilizer: Calcium Ammonium Nitrate  
+Organic_1: Compost  
+Organic_2: Banana Wastes  
+Organic_3: Neem Cake  
+pH_Amendment: Sulphur  
+_N_calc: Low  
+_P_calc: Optimal  
+_K_calc: Low  
+
+3. Sources Used for Verification & Enrichment
+
+The dataset was cross-verified and enriched using multiple authoritative Indian and international sources, including:
+
+Indian Council of Agricultural Research (ICAR) – https://icar.org.in
+
+Krishi Vigyan Kendras (KVKs) guidelines – https://kvk.icar.gov.in
+
+State Agricultural Universities (PAU, TNAU, IARI, etc.)
+
+FAO Soil & Fertilizer Management Resources – https://www.fao.org
+
+Department of Agriculture & Farmers Welfare, Govt. of India – https://agricoop.nic.in
+
+Soil Health Card Scheme (India) – https://soilhealth.dac.gov.in
+
+International Fertilizer Association (IFA) – https://www.fertilizer.org
+
+Scientific journals and extension bulletins on nutrient management and fertilizer recommendations.
+
+4. Notes
+
+All fertilizer recommendations are regionally adapted for Indian conditions.
+
+Secondary fertilizer was set to a different inorganic type than the primary, as per agronomic best practices.
+
+Missing or invalid values like "-" or "—" were cleaned and replaced with verified entries.
+
+Organic amendments were selected from widely used, sustainable practices.
+
+5. Usage
+
+This dataset is intended for:
+
+Machine Learning models for fertilizer recommendation systems
+
+Decision support tools for precision agriculture
+
+Research in soil fertility and crop productivity
+
+Farmer advisory platforms

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fertilizer Recommendation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@200;300;400;600;700&display=swap');
+        
+        :root {
+            --green: #149600;
+            --red: #008116;
+        }
+        
+        * {
+            font-family: 'Nunito', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            outline: none;
+            border: none;
+            text-decoration: none;
+            text-transform: capitalize;
+            transition: all .2s linear;
+        }
+        
+        html {
+            font-size: 62.5%;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+            scroll-padding-top: 6rem;
+        }
+        
+        body {
+            background: url("{{ url_for('static', filename='images/3.jpg') }}") no-repeat;
+            background-size: cover;
+            background-position: center;
+            min-height: 100vh;
+        }
+        
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+            padding: 2rem 9%;
+            box-shadow: 0 .5rem 1rem rgba(0,0,0,.1);
+        }
+        
+        header .logo {
+            font-size: 2.5rem;
+            font-weight: bolder;
+            color: #666;
+        }
+        
+        header .logo i {
+            padding-right: .5rem;
+            color: var(--red);
+        }
+        
+        header .navbar a {
+            font-size: 2rem;
+            margin-left: 2rem;
+            color: #666;
+        }
+        
+        header .navbar a:hover {
+            color: var(--red);
+        }
+        
+        #menu-bar {
+            font-size: 3rem;
+            cursor: pointer;
+            color: rgb(62, 204, 7);
+            border: .1rem solid #666;
+            border-radius: .3rem;
+            padding: .5rem 1.5rem;
+            display: none;
+        }
+        
+        .wrapper {
+            max-width: 600px;
+            margin: 120px auto 50px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .title {
+            font-size: 2.4rem;
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+        
+        .inputfield {
+            margin-bottom: 20px;
+        }
+        
+        .inputfield label {
+            display: block;
+            font-size: 1.6rem;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .input, .custom_select select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1.5rem;
+            background: #fff;
+            transition: border-color 0.3s;
+        }
+        
+        .input:focus, .custom_select select:focus {
+            border-color: var(--green);
+            outline: none;
+        }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: var(--green);
+            color: #fff;
+            font-size: 1.8rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #0f7a00;
+        }
+        
+        .wrapper1 {
+            max-width: 600px;
+            margin: 20px auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .crop {
+            font-size: 2.2rem;
+            color: var(--green);
+            font-weight: 600;
+        }
+        
+        .alert {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 1.5rem;
+        }
+        
+        .alert-error {
+            background: #fdecea;
+            color: #611a15;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .card {
+            background: #f9fbfc;
+            border: 1px solid #e3edf2;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        .kv {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 1.4rem;
+        }
+        
+        .kv div {
+            padding: 8px;
+        }
+        
+        .muted {
+            color: #607d8b;
+            font-weight: 500;
+        }
+        
+        @media(max-width:768px) {
+            #menu-bar {
+                display: initial;
+            }
+            
+            header .navbar {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: rgb(225, 248, 227);
+                border-top: .1rem solid rgba(0,0,0,.1);
+                clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+            }
+            
+            header .navbar a:hover {
+                background-color: rgb(127, 224, 136);
+            }
+            
+            header .navbar.active {
+                clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%);
+            }
+            
+            header .navbar a {
+                margin: 1.5rem;
+                padding: 1.5rem 140px;
+                display: block;
+                border: .2rem solid rgba(0,0,0,.1);
+                border-left: .5rem solid var(--red);
+            }
+            
+            .wrapper {
+                margin: 100px 20px 50px;
+                padding: 20px;
+            }
+            
+            html {
+                font-size: 55%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="#" class="logo"><i class="fas fa-seedling"></i>Ferti</a>
+        <div id="menu-bar" class="fas fa-bars"></div>
+        <nav class="navbar">
+            <a href="{{ url_for('home') }}">home</a>
+            <a href="{{ url_for('Detail') }}">Details</a>
+            <a href="{{ url_for('Model1') }}">Model</a>
+        </nav>
+    </header>
+
+    <div class="wrapper">
+        <div class="title">
+            Recommending Best Fertilizer for your crop
+        </div>
+        
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('predict') }}" id="Home" class="form">
+            <div class="inputfield">
+                <label for="Temperature">Temperature (°C)</label>
+                <input type="number" step="0.1" class="input" name="Temperature" id="Temperature" required>
+            </div>
+            
+            <div class="inputfield">
+                <label for="Humidity">Humidity (%)</label>
+                <input type="number" step="0.1" class="input" name="Humidity" id="Humidity" required>
+            </div>
+            
+            <div class="inputfield">
+                <label for="Moisture">Moisture (%)</label>
+                <input type="number" step="0.1" class="input" name="Moisture" id="Moisture" required>
+            </div>
+            
+            <div class="inputfield">
+                <label for="Soil_Type">Soil Type</label>
+                <input type="text" class="input" name="Soil_Type" id="Soil_Type" placeholder="e.g., Sandy, Clayey, Loamy" required>
+            </div>
+            
+            <div class="inputfield">
+                <label for="Crop">Crop Type</label>
+                <input type="text" class="input" name="Crop" id="Crop" placeholder="e.g., Maize, Wheat, Rice" required>
+            </div>
+            
+            <div class="inputfield">
+                <label for="Nitrogen">Nitrogen (ppm)</label>
+                <input type="number" step="0.1" class="input" name="Nitrogen" id="Nitrogen" required>
+            </div>
+            
+            <div class="inputfield">
+                <label for="Potassium">Potassium (ppm)</label>
+                <input type="number" step="0.1" class="input" name="Potassium" id="Potassium" required>
+            </div>
+            
+            <div class="inputfield">
+                <label for="Phosphorus">Phosphorus (ppm)</label>
+                <input type="number" step="0.1" class="input" name="Phosphorus" id="Phosphorus" required>
+            </div>
+            
+            <div class="inputfield">
+                <label for="pH">pH Value</label>
+                <input type="number" step="0.01" class="input" name="pH" id="pH" required>
+            </div>
+            
+            <div class="card">
+                <strong style="font-size: 1.6rem; color: #333;">Optional: Generate Full Recommendation</strong>
+                <div style="margin-top: 15px;">
+                    <div class="inputfield">
+                        <label for="Sowing_Date">Sowing Date</label>
+                        <input type="date" class="input" name="Sowing_Date" id="Sowing_Date">
+                    </div>
+                    <div class="inputfield">
+                        <label for="Field_Size">Field Size</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="number" step="0.01" class="input" name="Field_Size" id="Field_Size" placeholder="e.g., 2.5" style="flex: 1;">
+                            <select name="Field_Unit" class="input" style="flex: 0 0 120px;">
+                                <option value="hectares" selected>hectares</option>
+                                <option value="acres">acres</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="inputfield">
+                <button type="submit" name="submit" class="btn">Predict</button>
+            </div>
+        </form>
+        
+        {% if predictions %}
+        <div class="card">
+            <h3 style="font-size: 2rem; color: #333; margin-bottom: 15px;">Predicted Outputs</h3>
+            <div class="kv">
+                {% for k,v in predictions.items() %}
+                    <div class="muted">{{ k }}</div>
+                    <div style="color: #333; font-weight: 600;">{{ v }}{% if confidences and confidences.get(k) %} ({{ (confidences.get(k)*100)|round(1) }}%){% endif %}</div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if x %}
+    <div class="wrapper1">
+        <h1 class="crop">Recommended Fertilizer for Your Crop is: {{ x }}</h1>
+    </div>
+    {% endif %}
+
+    <script>
+        let menu = document.querySelector('#menu-bar');
+        let navbar = document.querySelector('.navbar');
+
+        menu.onclick = () => {
+            menu.classList.toggle('fa-times');
+            navbar.classList.toggle('active');
+        }
+
+        window.onscroll = () => {
+            menu.classList.remove('fa-times');
+            navbar.classList.remove('active');
+            
+            // Check if scroll-top element exists before accessing it
+            const scrollTop = document.querySelector('#scroll-top');
+            if(scrollTop) {
+                if(window.scrollY > 60){
+                    scrollTop.classList.add('active');
+                } else {
+                    scrollTop.classList.remove('active');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

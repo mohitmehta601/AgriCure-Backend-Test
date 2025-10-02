@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fertilizer Recommendation Report</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+    <style>
+      :root { --green:#149600; --bg:#f4f6f8; --card:#ffffff; --muted:#607d8b; }
+      body { font-family: Arial, sans-serif; background:var(--bg); margin:0; color:#223; }
+      header { position:sticky; top:0; background:#fff; padding:12px 16px; box-shadow:0 2px 6px rgba(0,0,0,0.06); display:flex; align-items:center; justify-content:space-between; }
+      .container { max-width: 1060px; margin: 24px auto; padding: 0 12px; }
+      .grid { display:grid; grid-template-columns: 1fr; gap:16px; }
+      .card { background:var(--card); border:1px solid #e3edf2; border-radius:12px; padding:18px 20px; }
+      .title { margin:0 0 8px 0; font-size:20px; }
+      .sub { color:var(--muted); font-size:13px; }
+      .row { display:flex; align-items:center; justify-content:space-between; }
+      .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#eef7ee; color:#0b6f2f; font-weight:600; font-size:12px; }
+      .section-title { margin:10px 0; font-size:16px; color:#445; }
+      .twocol { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+      .kv { display:grid; grid-template-columns: 220px 1fr; gap:8px; }
+      .muted { color:var(--muted); }
+      ul { margin:8px 0 0 18px; }
+      .amount { font-weight:700; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div><i class="fas fa-seedling" style="color:var(--green)"></i> Ferti Assist</div>
+      <nav><a href="{{ url_for('Model1') }}">Back</a></nav>
+    </header>
+    <div class="container">
+      <div class="grid">
+
+        <div class="card">
+          <div class="row">
+            <div>
+              <div class="sub">ML Model Prediction</div>
+              <h2 style="margin:6px 0">{{ report.ml_model_prediction.name if report.ml_model_prediction else 'Fertilizer' }}</h2>
+              <div class="sub">AI-powered recommendation based on your inputs</div>
+            </div>
+            <div>
+              {% if report.ml_model_prediction and report.ml_model_prediction.confidence_percent %}
+              <div class="pill">{{ report.ml_model_prediction.confidence_percent }}% Confidence</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Soil Condition Analysis</div>
+          <div class="twocol">
+            <div class="kv">
+              <div class="muted">pH Status</div>
+              <div>{{ report.soil_condition.ph_status if report.soil_condition else '—' }}</div>
+              <div class="muted">Moisture Status</div>
+              <div>{{ report.soil_condition.moisture_status if report.soil_condition else '—' }}</div>
+              <div class="muted">Nutrient Deficiencies</div>
+              <div>
+                {% if report.soil_condition and report.soil_condition.nutrient_deficiencies %}
+                  {% for d in report.soil_condition.nutrient_deficiencies %}
+                    <span class="pill" style="margin-right:6px">{{ d }}</span>
+                  {% endfor %}
+                {% else %}—{% endif %}
+              </div>
+            </div>
+            <div>
+              <div class="sub" style="margin-bottom:6px">Recommendations</div>
+              <ul>
+                {% if report.soil_condition and report.soil_condition.recommendations %}
+                  {% for r in report.soil_condition.recommendations %}
+                  <li>{{ r }}</li>
+                  {% endfor %}
+                {% else %}
+                  <li>No additional actions suggested.</li>
+                {% endif %}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="twocol">
+          <div class="card">
+            <div class="section-title">Primary Fertilizer</div>
+            <div><strong>{{ report.primary_fertilizer.name if report.primary_fertilizer else '—' }}</strong></div>
+            <div class="sub">Amount: <span class="amount">{{ report.primary_fertilizer.amount_kg if report.primary_fertilizer else '—' }} kg</span></div>
+            <div class="sub">Reason: {{ report.primary_fertilizer.reason if report.primary_fertilizer else '—' }}</div>
+            <div class="sub">Application: {{ report.primary_fertilizer.application_method if report.primary_fertilizer else '—' }}</div>
+          </div>
+          <div class="card">
+            <div class="section-title">Secondary Fertilizer</div>
+            <div><strong>{{ report.secondary_fertilizer.name if report.secondary_fertilizer else '—' }}</strong></div>
+            <div class="sub">Amount: <span class="amount">{{ report.secondary_fertilizer.amount_kg if report.secondary_fertilizer else '—' }} kg</span></div>
+            <div class="sub">Reason: {{ report.secondary_fertilizer.reason if report.secondary_fertilizer else '—' }}</div>
+            <div class="sub">Application: {{ report.secondary_fertilizer.application_method if report.secondary_fertilizer else '—' }}</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Organic Alternatives</div>
+          <div class="twocol">
+            {% if report.organic_alternatives %}
+              {% for o in report.organic_alternatives %}
+              <div class="card">
+                <div><strong>{{ o.name }}</strong></div>
+                <div class="sub">Amount: <span class="amount">{{ o.amount_kg }} kg</span></div>
+                <div class="sub">{{ o.reason }}</div>
+                <div class="sub">Timing: {{ o.timing }}</div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="muted">No organic options suggested.</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="twocol">
+          <div class="card">
+            <div class="section-title">Application Timing</div>
+            {% if report.application_timing %}
+              <ul>
+                <li><strong>Primary:</strong> {{ report.application_timing.primary }}</li>
+                <li><strong>Secondary:</strong> {{ report.application_timing.secondary }}</li>
+                <li><strong>Organics:</strong> {{ report.application_timing.organics }}</li>
+              </ul>
+            {% else %}
+              <div class="muted">—</div>
+            {% endif %}
+          </div>
+          <div class="card">
+            <div class="section-title">Cost Estimate</div>
+            {% if report.cost_estimate %}
+              <div class="kv">
+                <div class="muted">Primary Fertilizer</div>
+                <div>{{ report.cost_estimate.primary or '₹0' }}</div>
+                <div class="muted">Secondary Fertilizer</div>
+                <div>{{ report.cost_estimate.secondary or '₹0' }}</div>
+                <div class="muted">Organic Options</div>
+                <div>{{ report.cost_estimate.organics or '₹0' }}</div>
+                <div class="muted"><strong>Total Cost</strong></div>
+                <div><strong>{{ report.cost_estimate.total or '₹0' }}</strong></div>
+                <div class="muted">Notes</div>
+                <div style="font-size: 12px;">{{ report.cost_estimate.notes }}</div>
+              </div>
+              {% if report.cost_estimate.breakdown %}
+              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee;">
+                <div class="sub" style="margin-bottom: 8px;">Cost Breakdown Details</div>
+                <div style="font-size: 12px;">
+                  <div><strong>Primary:</strong> {{ report.cost_estimate.breakdown.primary_details.fertilizer }} 
+                    ({{ report.cost_estimate.breakdown.primary_details.amount_kg }}kg × {{ report.cost_estimate.breakdown.primary_details.price_per_kg }})</div>
+                  <div><strong>Secondary:</strong> {{ report.cost_estimate.breakdown.secondary_details.fertilizer }} 
+                    ({{ report.cost_estimate.breakdown.secondary_details.amount_kg }}kg × {{ report.cost_estimate.breakdown.secondary_details.price_per_kg }})</div>
+                  <div><strong>Organics:</strong> {{ report.cost_estimate.breakdown.organics_details.options_count }} option(s), 
+                    {{ report.cost_estimate.breakdown.organics_details.total_amount_kg }}kg total</div>
+                </div>
+              </div>
+              {% endif %}
+            {% else %}
+              <div class="kv">
+                <div class="muted">Primary Fertilizer</div>
+                <div>₹0</div>
+                <div class="muted">Secondary Fertilizer</div>
+                <div>₹0</div>
+                <div class="muted">Organic Options</div>
+                <div>₹0</div>
+                <div class="muted"><strong>Total Cost</strong></div>
+                <div><strong>₹0</strong></div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="sub">Generated: {{ report._meta.generated_at if report._meta else '' }}</div>
+        </div>
+
+      </div>
+    </div>
+  </body>
+  </html>
+
