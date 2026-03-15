@@ -6,6 +6,7 @@ import sys
 from typing import Dict, Any
 import logging
 from datetime import datetime
+from contextlib import asynccontextmanager
 from soil_api import soil_data_api
 
 # Add the new ML model directory to Python path
@@ -35,20 +36,6 @@ except ImportError as e:
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-app = FastAPI(
-    title="Fertilizer Recommendation API",
-    description="ML API for predicting fertilizer recommendations based on soil and crop conditions",
-    version="2.0.0"  # Updated version for new ML model
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 class FertilizerInput(BaseModel):
     Temperature: float
@@ -122,7 +109,6 @@ def get_recommender() -> FertilizerRecommender:
         _recommender = load_default()
     return _recommender
 
-@app.on_event("startup")
 async def startup_event():
     logger.info("Starting up Fertilizer Recommendation API...")
     try:
@@ -140,6 +126,26 @@ async def startup_event():
             logger.warning(f"LLM module not available: {LLM_ERROR}")
     except Exception as e:
         logger.error(f"Error during startup: {str(e)}")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await startup_event()
+    yield
+
+app = FastAPI(
+    title="Fertilizer Recommendation API",
+    description="ML API for predicting fertilizer recommendations based on soil and crop conditions",
+    version="2.0.0",  # Updated version for new ML model
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 async def root():

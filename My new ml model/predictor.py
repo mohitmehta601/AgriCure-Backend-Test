@@ -1,4 +1,5 @@
 import os
+import warnings
 from typing import Dict, Tuple, Any
 
 import joblib
@@ -14,7 +15,15 @@ class FertilizerRecommender:
     def __init__(self, model_path: str = MODEL_PATH):
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model artifact not found at {model_path}. Run train.py first.")
-        artifact = joblib.load(model_path)
+        # Ignore XGBoost's legacy pickle compatibility warning for existing artifacts.
+        # This keeps startup logs clean while preserving current model behavior.
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=r".*If you are loading a serialized model.*",
+                category=UserWarning,
+            )
+            artifact = joblib.load(model_path)
         self.features = artifact["features"]
         self.targets = artifact["targets"]
         self.models = artifact["models"]          # dict[target][model_name] -> pipeline

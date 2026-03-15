@@ -3,7 +3,7 @@ import re
 import numpy as np
 import pytest
 
-from pandas.compat import IS64
+from pandas.compat import WASM
 
 from pandas import (
     Index,
@@ -17,6 +17,9 @@ import pandas._testing as tm
 class TestIntervalIndex:
     @pytest.fixture
     def series_with_interval_index(self):
+        """
+        Fixture providing a Series with an IntervalIndex.
+        """
         return Series(np.arange(5), IntervalIndex.from_breaks(np.arange(6)))
 
     def test_loc_with_interval(self, series_with_interval_index, indexer_sl):
@@ -140,7 +143,7 @@ class TestIntervalIndex:
         # interval
         expected = 0
         result = indexer_sl(ser)[Interval(1, 5)]
-        result == expected
+        assert expected == result
 
         expected = ser
         result = indexer_sl(ser)[[Interval(1, 5), Interval(3, 7)]]
@@ -149,7 +152,10 @@ class TestIntervalIndex:
         with pytest.raises(KeyError, match=re.escape("Interval(3, 5, closed='right')")):
             indexer_sl(ser)[Interval(3, 5)]
 
-        msg = r"None of \[\[Interval\(3, 5, closed='right'\)\]\]"
+        msg = (
+            r"None of \[IntervalIndex\(\[\(3, 5\]\], "
+            r"dtype='interval\[int64, right\]'\)\] are in the \[index\]"
+        )
         with pytest.raises(KeyError, match=msg):
             indexer_sl(ser)[[Interval(3, 5)]]
 
@@ -208,7 +214,7 @@ class TestIntervalIndex:
             obj.loc[[4, 5, 6]]
 
 
-@pytest.mark.xfail(not IS64, reason="GH 23440")
+@pytest.mark.xfail(WASM, reason="GH 23440")
 @pytest.mark.parametrize(
     "intervals",
     [

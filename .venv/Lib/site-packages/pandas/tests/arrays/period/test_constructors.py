@@ -71,11 +71,11 @@ def test_from_datetime64_freq_2M(freq):
     "data, freq, msg",
     [
         (
-            [pd.Period("2017", "D"), pd.Period("2017", "A")],
+            [pd.Period("2017", "D"), pd.Period("2017", "Y")],
             None,
             "Input has different freq",
         ),
-        ([pd.Period("2017", "D")], "A", "Input has different freq"),
+        ([pd.Period("2017", "D")], "Y", "Input has different freq"),
     ],
 )
 def test_period_array_raises(data, freq, msg):
@@ -135,12 +135,11 @@ def test_from_td64nat_sequence_raises():
         pd.DataFrame(arr, dtype=dtype)
 
 
-def test_freq_deprecated():
-    # GH#52462
-    data = np.arange(5).astype(np.int64)
-    msg = "The 'freq' keyword in the PeriodArray constructor is deprecated"
-    with tm.assert_produces_warning(FutureWarning, match=msg):
-        res = PeriodArray(data, freq="M")
+def test_period_array_from_datetime64():
+    arr = np.array(
+        ["2020-01-01T00:00:00", "2020-02-02T00:00:00"], dtype="datetime64[ns]"
+    )
+    result = PeriodArray._from_datetime64(arr, freq=MonthEnd(2))
 
-    expected = PeriodArray(data, dtype="period[M]")
-    tm.assert_equal(res, expected)
+    expected = period_array(["2020-01-01", "2020-02-01"], freq=MonthEnd(2))
+    tm.assert_period_array_equal(result, expected)

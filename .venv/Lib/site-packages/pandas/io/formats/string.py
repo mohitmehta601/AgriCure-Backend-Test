@@ -1,6 +1,7 @@
 """
 Module for formatting output data in console (to string).
 """
+
 from __future__ import annotations
 
 from shutil import get_terminal_size
@@ -28,7 +29,7 @@ class StringFormatter:
     def to_string(self) -> str:
         text = self._get_string_representation()
         if self.fmt.should_show_dimensions:
-            text = "".join([text, self.fmt.dimensions_info])
+            text = f"{text}{self.fmt.dimensions_info}"
         return text
 
     def _get_strcols(self) -> list[list[str]]:

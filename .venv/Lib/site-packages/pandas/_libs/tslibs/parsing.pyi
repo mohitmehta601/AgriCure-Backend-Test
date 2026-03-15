@@ -23,16 +23,8 @@ def try_parse_dates(
     values: npt.NDArray[np.object_],  # object[:]
     parser,
 ) -> npt.NDArray[np.object_]: ...
-def try_parse_year_month_day(
-    years: npt.NDArray[np.object_],  # object[:]
-    months: npt.NDArray[np.object_],  # object[:]
-    days: npt.NDArray[np.object_],  # object[:]
-) -> npt.NDArray[np.object_]: ...
 def guess_datetime_format(
-    dt_str,
+    dt_str: str,
     dayfirst: bool | None = ...,
 ) -> str | None: ...
-def concat_date_cols(
-    date_cols: tuple,
-) -> npt.NDArray[np.object_]: ...
 def get_rule_month(source: str) -> str: ...

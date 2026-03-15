@@ -1,5 +1,6 @@
 from collections.abc import Generator
 import contextlib
+import weakref
 
 import pytest
 
@@ -82,19 +83,13 @@ def test_accessor_works():
 
 
 def test_overwrite_warns():
-    # Need to restore mean
-    mean = pd.Series.mean
-    try:
-        with tm.assert_produces_warning(UserWarning) as w:
-            pd.api.extensions.register_series_accessor("mean")(MyAccessor)
+    match = r".*MyAccessor.*fake.*Series.*"
+    with tm.assert_produces_warning(UserWarning, match=match):
+        with ensure_removed(pd.Series, "fake"):
+            setattr(pd.Series, "fake", 123)
+            pd.api.extensions.register_series_accessor("fake")(MyAccessor)
             s = pd.Series([1, 2])
-            assert s.mean.prop == "item"
-        msg = str(w[0].message)
-        assert "mean" in msg
-        assert "MyAccessor" in msg
-        assert "Series" in msg
-    finally:
-        pd.Series.mean = mean
+            assert s.fake.prop == "item"
 
 
 def test_raises_attribute_error():
@@ -107,3 +102,22 @@ def test_raises_attribute_error():
 
         with pytest.raises(AttributeError, match="whoops"):
             pd.Series([], dtype=object).bad
+
+
+@pytest.mark.parametrize(
+    "klass, registrar",
+    [
+        (pd.Series, pd.api.extensions.register_series_accessor),
+        (pd.DataFrame, pd.api.extensions.register_dataframe_accessor),
+        (pd.Index, pd.api.extensions.register_index_accessor),
+    ],
+)
+def test_no_circular_reference(klass, registrar):
+    # GH 41357
+    with ensure_removed(klass, "access"):
+        registrar("access")(MyAccessor)
+        obj = klass([0])
+        ref = weakref.ref(obj)
+        assert obj.access.obj is obj
+        del obj
+        assert ref() is None

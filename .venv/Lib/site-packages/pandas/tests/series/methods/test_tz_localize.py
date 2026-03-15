@@ -1,7 +1,6 @@
 from datetime import timezone
 
 import pytest
-import pytz
 
 from pandas._libs.tslibs import timezones
 
@@ -28,7 +27,7 @@ class TestTZLocalize:
         expected0 = Series([expected0])
         expected1 = Series([expected1])
 
-        with tm.external_error_raised(pytz.AmbiguousTimeError):
+        with tm.external_error_raised(ValueError):
             ser.dt.tz_localize("US/Central")
 
         result = ser.dt.tz_localize("US/Central", ambiguous=True)
@@ -70,20 +69,20 @@ class TestTZLocalize:
             ["foo", "invalid"],
         ],
     )
-    def test_tz_localize_nonexistent(self, warsaw, method, exp):
+    def test_tz_localize_nonexistent(self, warsaw, method, exp, unit):
         # GH 8917
         tz = warsaw
         n = 60
-        dti = date_range(start="2015-03-29 02:00:00", periods=n, freq="min")
+        dti = date_range(start="2015-03-29 02:00:00", periods=n, freq="min", unit=unit)
         ser = Series(1, index=dti)
         df = ser.to_frame()
 
         if method == "raise":
-            with tm.external_error_raised(pytz.NonExistentTimeError):
+            with tm.external_error_raised(ValueError):
                 dti.tz_localize(tz, nonexistent=method)
-            with tm.external_error_raised(pytz.NonExistentTimeError):
+            with tm.external_error_raised(ValueError):
                 ser.tz_localize(tz, nonexistent=method)
-            with tm.external_error_raised(pytz.NonExistentTimeError):
+            with tm.external_error_raised(ValueError):
                 df.tz_localize(tz, nonexistent=method)
 
         elif exp == "invalid":
@@ -101,7 +100,7 @@ class TestTZLocalize:
 
         else:
             result = ser.tz_localize(tz, nonexistent=method)
-            expected = Series(1, index=DatetimeIndex([exp] * n, tz=tz))
+            expected = Series(1, index=DatetimeIndex([exp] * n, tz=tz).as_unit(unit))
             tm.assert_series_equal(result, expected)
 
             result = df.tz_localize(tz, nonexistent=method)

@@ -1,15 +1,15 @@
 from pandas.io.json._json import (
     read_json,
     to_json,
-    ujson_dumps as dumps,
-    ujson_loads as loads,
+    ujson_dumps,
+    ujson_loads,
 )
 from pandas.io.json._table_schema import build_table_schema
 
 __all__ = [
-    "dumps",
-    "loads",
+    "build_table_schema",
     "read_json",
     "to_json",
-    "build_table_schema",
+    "ujson_dumps",
+    "ujson_loads",
 ]

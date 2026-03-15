@@ -3,6 +3,7 @@ Tests for the following offsets:
 - BMonthBegin
 - BMonthEnd
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -31,7 +32,7 @@ from pandas.tseries.offsets import (
 )
 def test_apply_index(cls, n):
     offset = cls(n=n)
-    rng = pd.date_range(start="1/1/2000", periods=100000, freq="T")
+    rng = pd.date_range(start="1/1/2000", periods=100000, freq="min")
     ser = pd.Series(rng)
 
     res = rng + offset
